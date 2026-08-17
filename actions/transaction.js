@@ -1,8 +1,5 @@
 "use server";
 
-import template from '../emails/template'; // may delete later
-import { sendEmail } from "@/actions/send-email"; // may delete later
-
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -205,11 +202,16 @@ export async function getUserTransactions(query = {}) {
 // Scan Receipt
 export async function scanReceipt(file) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-    // Convert File to ArrayBuffer
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Receipt scanning is not configured");
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const arrayBuffer = await file.arrayBuffer();
-    // Convert ArrayBuffer to Base64
     const base64String = Buffer.from(arrayBuffer).toString("base64");
 
     const prompt = `
@@ -248,20 +250,38 @@ export async function scanReceipt(file) {
 
     try {
       const data = JSON.parse(cleanedText);
+
+      if (!data?.amount) {
+        throw new Error("Could not read receipt. Please upload a clearer image.");
+      }
+
+      const amount = parseFloat(data.amount);
+      if (Number.isNaN(amount)) {
+        throw new Error("Could not read receipt amount. Please enter it manually.");
+      }
+
+      const parsedDate = data.date ? new Date(data.date) : new Date();
+      if (Number.isNaN(parsedDate.getTime())) {
+        throw new Error("Could not read receipt date. Please select the date manually.");
+      }
+
       return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
+        amount,
+        date: parsedDate,
+        description: data.description || data.merchantName || "",
+        category: data.category || "other-expense",
+        merchantName: data.merchantName || "",
       };
     } catch (parseError) {
+      if (parseError.message.startsWith("Could not read receipt")) {
+        throw parseError;
+      }
       console.error("Error parsing JSON response:", parseError);
       throw new Error("Invalid response format from Gemini");
     }
   } catch (error) {
     console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+    throw new Error(error.message || "Failed to scan receipt");
   }
 }
 
