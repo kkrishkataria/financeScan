@@ -182,8 +182,9 @@ export function TransactionTable({ transactions }) {
     if (deleted?.success && !deleteLoading) {
       toast.success("Transactions deleted successfully");
       setSelectedIds([]);
+      router.refresh();
     }
-  }, [deleted, deleteLoading]);
+  }, [deleted, deleteLoading, router]);
 
   const handleClearFilters = () => {
     setSearchTerm("");

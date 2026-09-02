@@ -3,9 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import { generateGeminiContent } from "@/lib/gemini";
+import { normalizeReceiptCategory } from "@/lib/receipt-utils";
 
 const serializeAmount = (obj) => ({
   ...obj,
@@ -209,42 +208,28 @@ export async function scanReceipt(file) {
       throw new Error("Receipt scanning is not configured");
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     const arrayBuffer = await file.arrayBuffer();
     const base64String = Buffer.from(arrayBuffer).toString("base64");
 
-    const prompt = `
-      Analyze this receipt image and extract the following information in JSON format:
-      - Total amount (just the number)
-      - Date (in ISO format)
-      - Description or items purchased (brief summary)
-      - Merchant/store name
-      - Suggested category (one of: housing,transportation,groceries,utilities,entertainment,food,shopping,healthcare,education,personal,travel,insurance,gifts,bills,other-expense )
-      
-      Only respond with valid JSON in this exact format:
-      {
-        "amount": number,
-        "date": "ISO date string",
-        "description": "string",
-        "merchantName": "string",
-        "category": "string"
-      }
+    const prompt = `Extract receipt data. Return ONLY valid JSON, no markdown:
+{"amount":number,"date":"ISO date","description":"brief summary","merchantName":"store name","category":"one of housing,transportation,groceries,utilities,entertainment,food,shopping,healthcare,education,personal,travel,insurance,gifts,bills,other-expense"}
+If not a receipt, return {}.`;
 
-      If its not a receipt, return an empty object.
-    `;
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64String,
-          mimeType: file.type,
+    const response = await generateGeminiContent(
+      [
+        {
+          inlineData: {
+            data: base64String,
+            mimeType: file.type || "image/jpeg",
+          },
         },
-      },
-      prompt,
-    ]);
+        prompt,
+      ],
+      // Receipt uploads are interactive. Fail fast rather than keeping the UI
+      // loading while retrying an unavailable model several times.
+      { maxRetries: 0 }
+    );
 
-    const response = await result.response;
     const text = response.text();
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
 
@@ -269,7 +254,7 @@ export async function scanReceipt(file) {
         amount,
         date: parsedDate,
         description: data.description || data.merchantName || "",
-        category: data.category || "other-expense",
+        category: normalizeReceiptCategory(data.category),
         merchantName: data.merchantName || "",
       };
     } catch (parseError) {

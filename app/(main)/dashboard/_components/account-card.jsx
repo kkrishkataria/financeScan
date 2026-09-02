@@ -1,8 +1,7 @@
 "use client";
 
-import { ArrowUpRight, ArrowDownRight, CreditCard } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, WalletCards } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 import useFetch from "@/hooks/use-fetch";
 import {
@@ -13,10 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { updateDefaultAccount } from "@/actions/account";
 import { toast } from "sonner";
 
 export function AccountCard({ account }) {
+  const router = useRouter();
   const { name, type, balance, id, isDefault } = account;
 
   const {
@@ -40,8 +41,9 @@ export function AccountCard({ account }) {
   useEffect(() => {
     if (updatedAccount?.success) {
       toast.success("Default account updated successfully");
+      router.refresh();
     }
-  }, [updatedAccount]);
+  }, [updatedAccount, router]);
 
   useEffect(() => {
     if (error) {
@@ -50,12 +52,11 @@ export function AccountCard({ account }) {
   }, [error]);
 
   return (
-    <Card className="hover:shadow-md transition-shadow group relative">
+    <Card className="group relative overflow-hidden border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-950/10">
+      <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-gradient-to-bl from-blue-100/70 to-transparent blur-2xl" />
       <Link href={`/account/${id}`}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium capitalize">
-            {name}
-          </CardTitle>
+        <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2.5"><span className="rounded-xl bg-slate-100 p-2 text-slate-600"><WalletCards className="h-4 w-4" /></span><CardTitle className="text-sm font-semibold capitalize text-slate-800">{name}</CardTitle></div>
           <Switch
             checked={isDefault}
             onCheckedChange={handleDefaultChange}
@@ -63,15 +64,16 @@ export function AccountCard({ account }) {
             onClick={(event) => event.stopPropagation()}
           />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
+        <CardContent className="relative">
+          <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-slate-400">Available balance</p>
+          <div className="text-2xl font-bold tracking-tight text-slate-950">
           ₹{parseFloat(balance).toFixed(2)}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             {type.charAt(0) + type.slice(1).toLowerCase()} Account
           </p>
         </CardContent>
-        <CardFooter className="flex justify-between text-sm text-muted-foreground">
+        <CardFooter className="relative mx-6 mb-5 rounded-xl bg-slate-50 px-3 py-2.5 flex justify-between text-xs font-medium text-muted-foreground">
           <div className="flex items-center">
             <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
             Income

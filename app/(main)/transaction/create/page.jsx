@@ -19,15 +19,17 @@ export default async function AddTransactionPage({ searchParams: searchParamsPro
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-5">
-      <div className="flex justify-center md:justify-normal mb-8">
-        <h1 className="text-5xl gradient-title ">
-          {editId ? "Edit Transaction" : "Add Transaction"}
+    <div className="max-w-4xl mx-auto px-5 pb-12">
+      <div className="mb-8 rounded-3xl border border-violet-100 bg-[linear-gradient(110deg,#f5f3ff,#fdf4ff,#fff7ed)] px-6 py-7 md:px-8">
+        <p className="eyebrow mb-3 bg-white/80">{editId ? "Make a correction" : "Keep your money story complete"}</p>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-950">
+          {editId ? "Edit transaction" : "Add a transaction"}
         </h1>
+        <p className="mt-2 text-slate-600">{editId ? "Update the details and keep your balances accurate." : "Scan a receipt or add the details manually in a few seconds."}</p>
       </div>
 
       {accounts.length === 0 ? (
-        <Card className="border-dashed">
+        <Card className="surface-card border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-muted-foreground mb-4">
               Create an account before adding transactions.

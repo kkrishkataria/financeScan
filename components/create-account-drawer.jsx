@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -29,6 +30,7 @@ import { createAccount } from "@/actions/dashboard";
 import { accountSchema } from "@/app/lib/schema";
 
 export function CreateAccountDrawer({ children }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const {
     register,
@@ -59,12 +61,13 @@ export function CreateAccountDrawer({ children }) {
   };
 
   useEffect(() => {
-    if (newAccount) {
+    if (newAccount?.success) {
       toast.success("Account created successfully");
       reset();
       setOpen(false);
+      router.refresh();
     }
-  }, [newAccount, reset]);
+  }, [newAccount, reset, router]);
 
   useEffect(() => {
     if (error) {
