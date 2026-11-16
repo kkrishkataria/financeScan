@@ -12,9 +12,13 @@ import {
   ChevronRight,
   RefreshCw,
   Clock,
+  Download,
+  FileSpreadsheet,
+  Printer,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { exportTransactionsToCSV, printTransactionsPDF } from "@/lib/export";
 
 import {
   Table,
@@ -198,6 +202,43 @@ export function TransactionTable({ transactions }) {
     setSelectedIds([]); // Clear selections on page change
   };
 
+  const getTargetTransactions = () => {
+    if (selectedIds.length > 0) {
+      return filteredAndSortedTransactions.filter((t) =>
+        selectedIds.includes(t.id)
+      );
+    }
+    return filteredAndSortedTransactions;
+  };
+
+  const handleExportCSV = () => {
+    const target = getTargetTransactions();
+    if (!target || target.length === 0) {
+      toast.error("No transactions to export");
+      return;
+    }
+    try {
+      const dateStr = format(new Date(), "yyyy-MM-dd");
+      exportTransactionsToCSV(target, `transactions-${dateStr}.csv`);
+      toast.success(`Exported ${target.length} transaction(s) to CSV`);
+    } catch (err) {
+      toast.error(err.message || "Failed to export CSV");
+    }
+  };
+
+  const handlePrintPDF = () => {
+    const target = getTargetTransactions();
+    if (!target || target.length === 0) {
+      toast.error("No transactions to print");
+      return;
+    }
+    try {
+      printTransactionsPDF(target, "Account Transactions");
+    } catch (err) {
+      toast.error(err.message || "Failed to generate print view");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {deleteLoading && (
@@ -263,6 +304,33 @@ export function TransactionTable({ transactions }) {
               </Button>
             </div>
           )}
+
+          {/* Export / Download Options */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+                {selectedIds.length > 0 && ` (${selectedIds.length})`}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleExportCSV}
+                className="gap-2 cursor-pointer"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                <span>Download CSV (Excel)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handlePrintPDF}
+                className="gap-2 cursor-pointer"
+              >
+                <Printer className="h-4 w-4 text-blue-600" />
+                <span>Print / Save as PDF</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {(searchTerm || typeFilter || recurringFilter) && (
             <Button

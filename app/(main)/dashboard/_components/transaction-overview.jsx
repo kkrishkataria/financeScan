@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   PieChart,
   Pie,
@@ -10,7 +10,10 @@ import {
   Legend,
 } from "recharts";
 import { format } from "date-fns";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { exportElementAsPNG } from "@/lib/export";
+import { toast } from "sonner";
 
 import {
   Select,
@@ -36,6 +39,24 @@ export function DashboardOverview({ accounts, transactions }) {
   const [selectedAccountId, setSelectedAccountId] = useState(
     accounts.find((a) => a.isDefault)?.id || accounts[0]?.id
   );
+  const [isDownloading, setIsDownloading] = useState(false);
+  const pieCardRef = useRef(null);
+
+  const handleDownloadPie = async () => {
+    if (!pieCardRef.current) return;
+    setIsDownloading(true);
+    try {
+      await exportElementAsPNG(
+        pieCardRef.current,
+        `monthly-expense-breakdown-${format(new Date(), "yyyy-MM")}.png`
+      );
+      toast.success("Expense breakdown chart downloaded!");
+    } catch (err) {
+      toast.error(err.message || "Failed to download chart");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // Filter transactions for selected account
   const accountTransactions = transactions.filter(
@@ -145,11 +166,26 @@ export function DashboardOverview({ accounts, transactions }) {
       </Card>
 
       {/* Expense Breakdown Card */}
-      <Card>
-        <CardHeader>
+      <Card ref={pieCardRef}>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-normal">
             Monthly Expense Breakdown
           </CardTitle>
+          {pieChartData.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPie}
+              disabled={isDownloading}
+              className="h-8 px-2.5 text-xs gap-1.5"
+              title="Download pie chart"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                {isDownloading ? "..." : "Download"}
+              </span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-0 pb-5">
           {pieChartData.length === 0 ? (
