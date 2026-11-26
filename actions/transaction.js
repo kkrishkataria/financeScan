@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { checkUser } from "@/lib/checkUser";
 import { generateGeminiContent } from "@/lib/gemini";
 import {
   normalizeReceiptCategory,
@@ -20,9 +21,13 @@ export async function createTransaction(data) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
+    let user = await db.user.findUnique({
       where: { clerkUserId: userId },
     });
+
+    if (!user) {
+      user = await checkUser();
+    }
 
     if (!user) {
       throw new Error("User not found");
